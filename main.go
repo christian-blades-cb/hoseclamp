@@ -50,7 +50,7 @@ func sendToLogio(client *logio.Client, loglines <-chan *loghose.LoghoseLine) {
 
 		logline := &logio.LogLine{
 			Node:    strings.Replace(line.Image, ":", "__", -1),
-			Stream:  fmt.Sprintf("%s-%s", line.ContainerName, line.ContainerId),
+			Stream:  line.ContainerName,
 			Level:   level,
 			Message: line.LogfmtLine(),
 		}
