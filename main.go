@@ -4,13 +4,13 @@ import (
 	"bufio"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/jessevdk/go-flags"
 
-	log "github.com/christian-blades-cb/log-multiplexer/_vendor/logrus"
-	"github.com/christian-blades-cb/log-multiplexer/loghose"
-	"github.com/christian-blades-cb/log-multiplexer/logio"
-	"strings"
+	log "github.com/christian-blades-cb/hoseclamp/_vendor/logrus"
+	"github.com/christian-blades-cb/hoseclamp/loghose"
+	"github.com/christian-blades-cb/hoseclamp/logio"
 )
 
 func main() {
