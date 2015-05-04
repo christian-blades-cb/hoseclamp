@@ -16,6 +16,9 @@ import (
 func main() {
 	var opts struct {
 		LogioServer string `short:"s" long:"server" description:"logio server" default:"localhost:28777" env:"LOGIO_SERVER"`
+
+		DockerHost     string `long:"host" description:"Docker Host" required:"true" default:"unix:///var/run/docker.sock" env:"DOCKER_HOST"`
+		DockerCertPath string `long:"certpath" description:"Docker TLS Certificate path" env:"DOCKER_CERT_PATH"`
 	}
 	_, err := flags.Parse(&opts)
 	if err != nil {
