@@ -3,13 +3,13 @@ package firehose
 import (
 	"encoding/json"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/christian-blades-cb/gojsonexplode"
-	log "github.com/christian-blades-cb/hoseclamp/_vendor/logrus"
 
 	"github.com/kr/logfmt"
 )
 
-func Parse(line ContainerLine) {
+func Parse(line *ContainerLine) {
 	line.ParsedLine = parseLine(line.RawLine)
 }
 
@@ -44,14 +44,14 @@ func unmarshalLogfmt(line []byte) map[string]interface{} {
 		}
 	}()
 
-	logline := make(LogfmtMap)
+	logline := make(logfmtMap)
 	logfmt.Unmarshal(line, logline)
 	return logline
 }
 
-type LogfmtMap map[string]interface{}
+type logfmtMap map[string]interface{}
 
-func (lm LogfmtMap) HandleLogfmt(key, val []byte) error {
+func (lm logfmtMap) HandleLogfmt(key, val []byte) error {
 	keystring := string(key[:])
 	valstring := string(val[:])
 	lm[keystring] = valstring

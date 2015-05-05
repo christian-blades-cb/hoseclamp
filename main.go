@@ -1,15 +1,12 @@
 package main
 
 import (
-	"bufio"
-	"io"
-	"os"
 	"strings"
 
 	"github.com/jessevdk/go-flags"
 
-	log "github.com/christian-blades-cb/hoseclamp/_vendor/logrus"
-	"github.com/christian-blades-cb/hoseclamp/loghose"
+	log "github.com/Sirupsen/logrus"
+	"github.com/christian-blades-cb/hoseclamp/firehose"
 	"github.com/christian-blades-cb/hoseclamp/logio"
 )
 
@@ -34,54 +31,34 @@ func main() {
 	}
 	defer client.Close()
 
-	loglines := make(chan *loghose.LoghoseLine)
+	rawLines := make(chan *firehose.ContainerLine, 20)
+	go sendToLogio(client, rawLines)
 
-	go sendToLogio(client, loglines)
-	readParseLoop(loglines)
+	err = firehose.LogLineStream(opts.DockerHost, opts.DockerCertPath, rawLines)
+	if err != nil {
+		log.WithField("err", err).Warn("error on startup")
+	}
 }
 
-func sendToLogio(client *logio.Client, loglines <-chan *loghose.LoghoseLine) {
+func sendToLogio(client *logio.Client, loglines <-chan *firehose.ContainerLine) {
 	for line := range loglines {
+		firehose.Parse(line)
 
 		level := "Info"
-		if l, ok := line.Logline["line.level"]; ok {
+		if l, ok := line.ParsedLine["line.level"]; ok {
 			if lvl, ok := l.(string); ok && lvl != "" {
-				level = l.(string)
+				level = lvl
 			}
 		}
 
 		logline := &logio.LogLine{
 			Node:    strings.Replace(line.Image, ":", "__", -1),
-			Stream:  line.ContainerName,
+			Stream:  line.ContainerId,
 			Level:   level,
-			Message: line.LogfmtLine(),
+			Message: logfmtMap(line.ParsedLine),
 		}
 
 		log.Infoln(logline.Serialize())
 		client.Log(logline)
-	}
-}
-
-func readParseLoop(loglines chan<- *loghose.LoghoseLine) {
-	consoleReader := bufio.NewReader(os.Stdin)
-	for {
-		rawline, ioErr := consoleReader.ReadSlice('\n')
-
-		loghoseLine, err := loghose.Parse(rawline)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"err":  err.Error(),
-				"line": string(rawline[:]),
-			}).Error("unable to parse line")
-			continue
-		}
-
-		loglines <- loghoseLine
-
-		if ioErr == io.EOF {
-			break
-		} else if ioErr != nil {
-			log.WithField("err", ioErr).Fatal("error reading from stream")
-		}
 	}
 }

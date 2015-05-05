@@ -1,7 +1,7 @@
 package firehose
 
 import (
-	log "github.com/christian-blades-cb/hoseclamp/_vendor/logrus"
+	log "github.com/Sirupsen/logrus"
 
 	"github.com/fsouza/go-dockerclient"
 
@@ -11,24 +11,53 @@ import (
 
 // TODO: Document public methods
 
-func LogLineStream(host, certpath string, rawLines chan<- ContainerLine) error {
+func LogLineStream(host, certpath string, rawLines chan<- *ContainerLine) error {
 	client := getClient(host, certpath)
+
+	if err := attachToRunningContainers(client, rawLines); err != nil {
+		return err
+	}
+
+	dockerEvents := make(chan *docker.APIEvents, 5)
+	attachToNewContainers(client, dockerEvents, rawLines)
+
+	return nil
+}
+
+func attachToNewContainers(client *docker.Client, eventStream <-chan *docker.APIEvents, rawLines chan<- *ContainerLine) {
+	for event := range eventStream {
+		if event.Status == "start" || event.Status == "restart" {
+			container, err := client.InspectContainer(event.ID)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"err":         err,
+					"containerId": event.ID,
+				}).Warn("could not retrieve information about starting container")
+			} else {
+				log.WithField("containerId", container.ID).Debug("container started, attaching")
+				go lineCollector(client, container.ID, container.Image, rawLines)
+			}
+		}
+	}
+}
+
+func attachToRunningContainers(client *docker.Client, rawLines chan<- *ContainerLine) error {
 	containers, err := client.ListContainers(docker.ListContainersOptions{})
 	if err != nil {
-		log.WithField("err", err).Warn("Error listing containers")
+		log.WithField("err", err).Warn("error listing containers")
 		return err
 	}
 
 	for _, container := range containers {
-		log.WithField("containerId", container.ID).Debug("Attaching to container")
+		log.WithField("containerId", container.ID).Debug("attaching to container")
 		go lineCollector(client, container.ID, container.Image, rawLines)
 	}
 
 	return nil
 }
 
-func lineCollector(client *docker.Client, containerId string, imageName string, outputChan chan<- ContainerLine) {
-	outputBuffer := &ChannelStream{
+func lineCollector(client *docker.Client, containerId string, imageName string, outputChan chan<- *ContainerLine) {
+	outputBuffer := &channelStream{
 		OutputChannel: outputChan,
 		ContainerId:   containerId,
 		Image:         imageName,
@@ -73,25 +102,25 @@ func getClient(host string, certpath string) *docker.Client {
 	}
 }
 
-type ContainerLine struct {
-	Image       string
-	ContainerId string
-	RawLine     []byte
-	ParsedLine  map[string]interface{}
-}
-
-type ChannelStream struct {
-	OutputChannel chan<- ContainerLine
+type channelStream struct {
+	OutputChannel chan<- *ContainerLine
 	Image         string
 	ContainerId   string
 }
 
-func (cs *ChannelStream) Write(p []byte) (n int, err error) {
-	cs.OutputChannel <- ContainerLine{
+func (cs *channelStream) Write(p []byte) (n int, err error) {
+	cs.OutputChannel <- &ContainerLine{
 		RawLine:     p,
 		Image:       cs.Image,
 		ContainerId: cs.ContainerId,
 	}
 
 	return len(p), nil
+}
+
+type ContainerLine struct {
+	Image       string
+	ContainerId string
+	RawLine     []byte
+	ParsedLine  map[string]interface{}
 }
