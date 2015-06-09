@@ -6,14 +6,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/docker/docker/vendor/src/code.google.com/p/go/src/pkg/archive/tar"
 
-	"github.com/Sirupsen/logrus"
+	log "github.com/Sirupsen/logrus"
 	"github.com/docker/docker/pkg/pools"
 	"github.com/docker/docker/pkg/system"
 )
@@ -43,13 +42,6 @@ func (change *Change) String() string {
 	}
 	return fmt.Sprintf("%s %s", kind, change.Path)
 }
-
-// for sort.Sort
-type changesByPath []Change
-
-func (c changesByPath) Less(i, j int) bool { return c[i].Path < c[j].Path }
-func (c changesByPath) Len() int           { return len(c) }
-func (c changesByPath) Swap(i, j int)      { c[j], c[i] = c[i], c[j] }
 
 // Gnu tar and the go tar writer don't have sub-second mtime
 // precision, which is problematic when we apply changes via tar
@@ -143,7 +135,7 @@ func Changes(layers []string, rw string) ([]Change, error) {
 type FileInfo struct {
 	parent     *FileInfo
 	name       string
-	stat       *system.Stat_t
+	stat       *system.Stat
 	children   map[string]*FileInfo
 	capability []byte
 	added      bool
@@ -176,7 +168,7 @@ func (info *FileInfo) path() string {
 }
 
 func (info *FileInfo) isDir() bool {
-	return info.parent == nil || info.stat.Mode()&syscall.S_IFDIR != 0
+	return info.parent == nil || info.stat.Mode()&syscall.S_IFDIR == syscall.S_IFDIR
 }
 
 func (info *FileInfo) addChanges(oldInfo *FileInfo, changes *[]Change) {
@@ -220,8 +212,8 @@ func (info *FileInfo) addChanges(oldInfo *FileInfo, changes *[]Change) {
 				oldStat.Gid() != newStat.Gid() ||
 				oldStat.Rdev() != newStat.Rdev() ||
 				// Don't look at size for dirs, its not a good measure of change
-				(oldStat.Mode()&syscall.S_IFDIR != syscall.S_IFDIR &&
-					(!sameFsTimeSpec(oldStat.Mtim(), newStat.Mtim()) || (oldStat.Size() != newStat.Size()))) ||
+				(oldStat.Size() != newStat.Size() && oldStat.Mode()&syscall.S_IFDIR != syscall.S_IFDIR) ||
+				!sameFsTimeSpec(oldStat.Mtim(), newStat.Mtim()) ||
 				bytes.Compare(oldChild.capability, newChild.capability) != 0 {
 				change := Change{
 					Path: newChild.path(),
@@ -381,8 +373,6 @@ func ExportChanges(dir string, changes []Change) (Archive, error) {
 		// this buffer is needed for the duration of this piped stream
 		defer pools.BufioWriter32KPool.Put(ta.Buffer)
 
-		sort.Sort(changesByPath(changes))
-
 		// In general we log errors here but ignore them because
 		// during e.g. a diff operation the container can continue
 		// mutating the filesystem and we can see transient errors
@@ -401,22 +391,22 @@ func ExportChanges(dir string, changes []Change) (Archive, error) {
 					ChangeTime: timestamp,
 				}
 				if err := ta.TarWriter.WriteHeader(hdr); err != nil {
-					logrus.Debugf("Can't write whiteout header: %s", err)
+					log.Debugf("Can't write whiteout header: %s", err)
 				}
 			} else {
 				path := filepath.Join(dir, change.Path)
 				if err := ta.addTarFile(path, change.Path[1:]); err != nil {
-					logrus.Debugf("Can't add file %s to tar: %s", path, err)
+					log.Debugf("Can't add file %s to tar: %s", path, err)
 				}
 			}
 		}
 
 		// Make sure to check the error on Close.
 		if err := ta.TarWriter.Close(); err != nil {
-			logrus.Debugf("Can't close layer: %s", err)
+			log.Debugf("Can't close layer: %s", err)
 		}
 		if err := writer.Close(); err != nil {
-			logrus.Debugf("failed close Changes writer: %s", err)
+			log.Debugf("failed close Changes writer: %s", err)
 		}
 	}()
 	return reader, nil
