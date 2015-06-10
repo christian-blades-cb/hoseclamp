@@ -1,4 +1,5 @@
 # Hoseclamp
+[![](https://badge.imagelayers.io/christianbladescb/hoseclamp:latest.svg)](https://imagelayers.io/?images=christianbladescb/hoseclamp:latest 'Get your own badge on imagelayers.io')
 
 Takes a stream from docker-loghose and squirts it into log.io.
 
