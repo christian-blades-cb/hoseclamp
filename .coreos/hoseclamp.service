@@ -1,0 +1,27 @@
+[Unit]
+Description=Hoseclamp Log Collector
+Requires=docker.service
+After=docker.service
+
+[Service]
+Restart=always
+TimeoutStartSec=10 min
+User=core
+
+ExecStartPre=/usr/bin/env bash -c "etcdctl get /environments/%p > '/tmp/%p.env'"
+
+ExecStartPre=-/usr/bin/env docker stop "%p-%i"
+ExecStartPre=-/usr/bin/env docker rm "%p-%i"
+ExecStartPre=/usr/bin/env docker pull christianbladescb/hoseclamp
+
+ExecStart=/usr/bin/env docker run \
+  --name='%p-%i' \
+  --env-file="/tmp/%p.env" \
+  --dns=172.17.41.1 \
+  --dns-search=skydns.local \
+  christianbladescb/hoseclamp
+
+ExecStop=-/usr/bin/env docker stop "%p-%i"
+
+[X-Fleet]
+Global=true
