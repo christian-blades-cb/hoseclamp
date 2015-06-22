@@ -1,3 +1,6 @@
-FROM golang:1.4-onbuild
+FROM centurylink/ca-certs
 
 MAINTAINER Christian Blades <christian.blades@gmail.com>
+
+COPY hoseclamp /
+ENTRYPOINT ["/hoseclamp"]
