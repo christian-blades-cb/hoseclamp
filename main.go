@@ -18,10 +18,15 @@ func main() {
 
 		DockerHost     string `long:"host" description:"Docker Host" required:"true" default:"unix:///var/run/docker.sock" env:"DOCKER_HOST"`
 		DockerCertPath string `long:"certpath" description:"Docker TLS Certificate path" env:"DOCKER_CERT_PATH"`
+		Verbose        bool   `long:"verbose" short:"v" description:"all the logs"`
 	}
 	_, err := flags.Parse(&opts)
 	if err != nil {
 		log.Fatal("Unable to parse arguments.")
+	}
+
+	if opts.Verbose {
+		log.SetLevel(log.DebugLevel)
 	}
 
 	// logioServer := opts.LogioServer

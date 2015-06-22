@@ -1,0 +1,16 @@
+hoseclamp:
+  image: christianbladescb/hoseclamp
+  links:
+    - sumo
+  environment:
+    - SUMOLOGIC_ENDPOINT=http://sumo:8882/endpoint
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+sumo:
+  image: christianbladescb/stubby-docker
+  ports: 
+    - "8882:8882"
+  volumes:
+    - .stubby:/stubby:ro
+  command: -d /stubby/sumologic.yaml
+  

@@ -1,0 +1,6 @@
+- request:
+    url: ^/endpoint
+    method: POST
+  response:
+    status: 200
+    body: hooray!

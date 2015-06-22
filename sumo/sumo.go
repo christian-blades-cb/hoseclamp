@@ -20,6 +20,7 @@ func NewClient(endpoint string) *Client {
 		connection: &http.Client{
 			Timeout: time.Duration(10) * time.Second,
 		},
+		endpoint: endpoint,
 	}
 }
 
