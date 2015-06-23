@@ -17,8 +17,7 @@ ExecStartPre=/usr/bin/env docker pull christianbladescb/hoseclamp
 ExecStart=/usr/bin/env docker run \
   --name='%p-%i' \
   --env-file="/tmp/%p.env" \
-  --dns=172.17.41.1 \
-  --dns-search=skydns.local \
+  -v /var/run/docker.sock:/var/run/docker.sock \
   christianbladescb/hoseclamp
 
 ExecStop=-/usr/bin/env docker stop "%p-%i"

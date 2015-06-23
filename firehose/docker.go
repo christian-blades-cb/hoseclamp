@@ -49,6 +49,10 @@ func attachToRunningContainers(client *docker.Client, rawLines chan<- *Container
 	}
 
 	for _, container := range containers {
+		if strings.Contains(container.Image, "hoseclamp") {
+			log.WithField("containerId", container.ID).Debug("found myself. skipping myself.")
+			continue
+		}
 		log.WithField("containerId", container.ID).Debug("attaching to container")
 		go lineCollector(client, container.ID, container.Image, rawLines)
 	}

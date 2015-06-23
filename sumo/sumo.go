@@ -54,7 +54,7 @@ func (c *Client) Log(line *LogLine) error {
 	}
 	buffer := bytes.NewBuffer(payload)
 
-	response, err := c.connection.Post(c.endpoint, "application/json", buffer)
+	response, err := c.connection.Post(c.endpoint, "application/json; charset=utf-8", buffer)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error":    err,
