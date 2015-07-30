@@ -2,5 +2,10 @@
     url: ^/endpoint
     method: POST
   response:
-    status: 200
-    body: hooray!
+    - status: 200
+      latency: 300
+    - status: 200
+      latency: 10001
+    - status: 200
+      latency: 20000
+  

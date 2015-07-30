@@ -19,6 +19,10 @@ func LogLineStream(host, certpath string, rawLines chan<- *ContainerLine) error 
 	}
 
 	dockerEvents := make(chan *docker.APIEvents, 5)
+	if err := client.AddEventListener(dockerEvents); err != nil {
+		log.WithField("error", err).Fatal("could not start docker event listener")
+	}
+
 	attachToNewContainers(client, dockerEvents, rawLines)
 
 	return nil
@@ -26,6 +30,7 @@ func LogLineStream(host, certpath string, rawLines chan<- *ContainerLine) error 
 
 func attachToNewContainers(client *docker.Client, eventStream <-chan *docker.APIEvents, rawLines chan<- *ContainerLine) {
 	for event := range eventStream {
+		log.WithField("docker_event", event.Status).Debug("event received")
 		if event.Status == "start" || event.Status == "restart" {
 			container, err := client.InspectContainer(event.ID)
 			if err != nil {

@@ -6,6 +6,7 @@ hoseclamp:
     - SUMOLOGIC_ENDPOINT=http://sumo:8882/endpoint
   volumes:
     - /var/run/docker.sock:/var/run/docker.sock
+  command: -v
 sumo:
   image: christianbladescb/stubby-docker
   ports: 

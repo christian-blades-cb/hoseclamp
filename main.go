@@ -29,21 +29,16 @@ func main() {
 		log.SetLevel(log.DebugLevel)
 	}
 
-	// logioServer := opts.LogioServer
-	// log.WithField("server", logioServer).Info("Connecting to logio server")
-
-	// client, err := logio.NewClient(logioServer)
-	// if err != nil {
-	// 	log.WithField("err", err.Error()).Fatal("error connecting to logio")
-	// }
-	// defer client.Close()
-	sumoClient := sumo.NewClient(opts.SumoServer)
-	log.WithField("sumologic_endpoint", opts.SumoServer).Info("using sumologic")
-
 	rawLines := make(chan *firehose.ContainerLine, 128)
 
-	//	go sendToLogio(client, rawLines)
-	go sendToSumoLogic(sumoClient, rawLines)
+	sumoBatcher := sumo.NewSumoClient(opts.SumoServer)
+	log.WithField("sumologic_endpoint", opts.SumoServer).Info("using sumologic")
+
+	go func() {
+		sumoBatcher.Start()
+		sendToSumoBatcher(sumoBatcher.Work, rawLines)
+		sumoBatcher.Stop()
+	}()
 
 	err = firehose.LogLineStream(opts.DockerHost, opts.DockerCertPath, rawLines)
 	if err != nil {
@@ -98,5 +93,21 @@ func sendToSumoLogic(client *sumo.Client, loglines <-chan *firehose.ContainerLin
 
 		log.Debugln(logline.Serialize())
 		client.Log(logline)
+	}
+}
+
+func sendToSumoBatcher(workChannel chan<- interface{}, loglines <-chan *firehose.ContainerLine) {
+	for line := range loglines {
+		firehose.Parse(line)
+
+		logline := sumo.LogLine{
+			Image:         line.Image,
+			Container:     line.ContainerId,
+			RawMessage:    nil,
+			Level:         getLevel(line),
+			ParsedMessage: line.ParsedLine,
+		}
+
+		workChannel <- logline
 	}
 }
