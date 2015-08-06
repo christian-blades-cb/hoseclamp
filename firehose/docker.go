@@ -40,7 +40,7 @@ func attachToNewContainers(client *docker.Client, eventStream <-chan *docker.API
 				}).Warn("could not retrieve information about starting container")
 			} else {
 				log.WithField("containerId", container.ID).Debug("container started, attaching")
-				go lineCollector(client, container.ID, container.Image, rawLines)
+				go lineCollector(client, container.ID, container.Config.Image, rawLines)
 			}
 		}
 	}
