@@ -40,7 +40,7 @@ func main() {
 		sumoBatcher.Stop()
 	}()
 
-	err = firehose.LogLineStream(opts.DockerHost, opts.DockerCertPath, rawLines)
+	err = firehose.StartLoglineStream(opts.DockerHost, opts.DockerCertPath, rawLines)
 	if err != nil {
 		log.WithField("err", err).Warn("error on startup")
 	}
@@ -48,7 +48,7 @@ func main() {
 
 func sendToLogio(client *logio.Client, loglines <-chan *firehose.ContainerLine) {
 	for line := range loglines {
-		firehose.Parse(line)
+		line.Parse()
 
 		level := "Info"
 		if l, ok := line.ParsedLine["line.level"]; ok {
@@ -81,7 +81,7 @@ func getLevel(line *firehose.ContainerLine) string {
 
 func sendToSumoLogic(client *sumo.Client, loglines <-chan *firehose.ContainerLine) {
 	for line := range loglines {
-		firehose.Parse(line)
+		line.Parse()
 
 		logline := &sumo.LogLine{
 			Image:         line.Image,
@@ -98,7 +98,7 @@ func sendToSumoLogic(client *sumo.Client, loglines <-chan *firehose.ContainerLin
 
 func sendToSumoBatcher(workChannel chan<- interface{}, loglines <-chan *firehose.ContainerLine) {
 	for line := range loglines {
-		firehose.Parse(line)
+		line.Parse()
 
 		logline := sumo.LogLine{
 			Image:         line.Image,

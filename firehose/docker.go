@@ -5,13 +5,13 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 
+	"bytes"
 	"path/filepath"
 	"strings"
 )
 
-// TODO: Document public methods
-
-func LogLineStream(host, certpath string, rawLines chan<- *ContainerLine) error {
+// StartLogLineStream attaches line collectors to existing docker containers, and new ones as they appear. ContainerLines are sent on the specified channel.
+func StartLoglineStream(host, certpath string, rawLines chan<- *ContainerLine) error {
 	client := getClient(host, certpath)
 
 	if err := attachToRunningContainers(client, rawLines); err != nil {
@@ -40,7 +40,7 @@ func attachToNewContainers(client *docker.Client, eventStream <-chan *docker.API
 				}).Warn("could not retrieve information about starting container")
 			} else {
 				log.WithField("containerId", container.ID).Debug("container started, attaching")
-				go lineCollector(client, container.ID, container.Config.Image, rawLines)
+				go attachChannelWriter(client, container.ID, container.Config.Image, rawLines)
 			}
 		}
 	}
@@ -59,17 +59,18 @@ func attachToRunningContainers(client *docker.Client, rawLines chan<- *Container
 			continue
 		}
 		log.WithField("containerId", container.ID).Debug("attaching to container")
-		go lineCollector(client, container.ID, container.Image, rawLines)
+		go attachChannelWriter(client, container.ID, container.Image, rawLines)
 	}
 
 	return nil
 }
 
-func lineCollector(client *docker.Client, containerId string, imageName string, outputChan chan<- *ContainerLine) {
-	outputBuffer := &channelStream{
+func attachChannelWriter(client *docker.Client, containerId string, imageName string, outputChan chan<- *ContainerLine) {
+	outputBuffer := &ContainerLineChannelWriter{
 		OutputChannel: outputChan,
 		ContainerId:   containerId,
 		Image:         imageName,
+		buf:           bytes.NewBuffer(nil),
 	}
 
 	client.AttachToContainer(docker.AttachToContainerOptions{
@@ -109,27 +110,4 @@ func getClient(host string, certpath string) *docker.Client {
 		}
 		return client
 	}
-}
-
-type channelStream struct {
-	OutputChannel chan<- *ContainerLine
-	Image         string
-	ContainerId   string
-}
-
-func (cs *channelStream) Write(p []byte) (n int, err error) {
-	cs.OutputChannel <- &ContainerLine{
-		RawLine:     p,
-		Image:       cs.Image,
-		ContainerId: cs.ContainerId,
-	}
-
-	return len(p), nil
-}
-
-type ContainerLine struct {
-	Image       string
-	ContainerId string
-	RawLine     []byte
-	ParsedLine  map[string]interface{}
 }

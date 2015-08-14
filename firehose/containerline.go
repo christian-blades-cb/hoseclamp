@@ -9,17 +9,20 @@ import (
 	"github.com/kr/logfmt"
 )
 
-func Parse(line *ContainerLine) {
-	line.ParsedLine = parseLine(line.RawLine)
+// ContainerLine represents a log line, along with some metadata which identifies which container it came from.
+type ContainerLine struct {
+	Image       string
+	ContainerId string
+	RawLine     []byte
+	ParsedLine  map[string]interface{}
 }
 
-func parseLine(line []byte) map[string]interface{} {
-	logline, err := unmarshalJson(line)
-	if err != nil {
-		logline = unmarshalLogfmt(line)
+// Parse attempts to deserialize a JSON or Logfmt logline. The parsed line is stored in the ParsedLine field.
+func (cl *ContainerLine) Parse() {
+	var err error
+	if cl.ParsedLine, err = unmarshalJson(cl.RawLine); err != nil {
+		cl.ParsedLine = unmarshalLogfmt(cl.RawLine)
 	}
-
-	return logline
 }
 
 func unmarshalJson(line []byte) (map[string]interface{}, error) {
