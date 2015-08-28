@@ -10,17 +10,17 @@ User=core
 
 ExecStartPre=/usr/bin/env bash -c "etcdctl get /environments/%p > '/tmp/%p.env'"
 
-ExecStartPre=-/usr/bin/env docker stop "%p-%i"
-ExecStartPre=-/usr/bin/env docker rm "%p-%i"
+ExecStartPre=-/usr/bin/env docker stop "%p"
+ExecStartPre=-/usr/bin/env docker rm "%p"
 ExecStartPre=/usr/bin/env docker pull christianbladescb/hoseclamp
 
 ExecStart=/usr/bin/env docker run \
-  --name='%p-%i' \
+  --name='%p' \
   --env-file="/tmp/%p.env" \
   -v /var/run/docker.sock:/var/run/docker.sock \
   christianbladescb/hoseclamp
 
-ExecStop=-/usr/bin/env docker stop "%p-%i"
+ExecStop=-/usr/bin/env docker stop "%p"
 
 [X-Fleet]
 Global=true
