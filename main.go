@@ -9,6 +9,8 @@ import (
 	"github.com/christian-blades-cb/hoseclamp/firehose"
 	"github.com/christian-blades-cb/hoseclamp/logio"
 	"github.com/christian-blades-cb/hoseclamp/sumo"
+	"net/http"
+	_ "net/http/pprof"
 )
 
 func main() {
@@ -28,6 +30,11 @@ func main() {
 	if opts.Verbose {
 		log.SetLevel(log.DebugLevel)
 	}
+
+	// profiler
+	go func() {
+		log.Info(http.ListenAndServe("0.0.0.0:6060", nil))
+	}()
 
 	rawLines := make(chan *firehose.ContainerLine, 128)
 

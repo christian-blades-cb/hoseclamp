@@ -24,6 +24,10 @@ Help Options:
 
 `docker run -v /var/run/docker.sock:/var/run/docker.sock --name=hoseclamp -e SUMOLOGIC_ENDPOINT=https://sumologic.api/endpoint christianbladescb/hoseclamp`
 
+## Debugging
+
+pprof is available on port **6060**
+
 ## Why not use logstash?
 
 It insulted my sister once.
